@@ -3,9 +3,20 @@
 namespace Sajjadhossainshohagbd\Extractor;
 
 use Illuminate\Support\ServiceProvider;
+use Sajjadhossainshohagbd\Extractor\Console\ExtractCommand;
+
 
 class ExtractorServiceProvider extends ServiceProvider
 {
+
+    public function register()
+    {
+        // Register extractor command
+        $this->commands([
+            ExtractCommand::class,
+        ]);
+    }
+
     public function boot()
     {
         // Merge extractor config to laravel config

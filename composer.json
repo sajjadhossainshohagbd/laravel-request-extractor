@@ -25,6 +25,7 @@
         }
     },
     "require": {
-        "laravel/pint": "^1.19"
+        "laravel/pint": "^1.19",
+        "nikic/php-parser": "^5.4"
     }
 }

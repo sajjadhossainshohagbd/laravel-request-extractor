@@ -1,0 +1,30 @@
+{
+    "name": "sajjadhossainshohagbd/laravel-request-extractor",
+    "version": "1.0.0",
+    "description": "Laravel Extract Validation is a Laravel package that simplifies the process of extracting validation rules from controller methods and automatically generating request files.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Sajjadhossainshohagbd\\Extractor\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Sajjad Hossain Shohag",
+            "email": "sajjadhossainshohagbd@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sajjadhossainshohagbd\\Extractor\\ExtractorServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "laravel/pint": "^1.19"
+    }
+}

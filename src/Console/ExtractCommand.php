@@ -63,12 +63,22 @@ class ExtractCommand extends Command
                         }
 
                         // Detecting $request->validate rules
-                        // if(
-                        //     $node instanceof MethodCall &&
-                        //     $node->var instanceof Variable
-                        // ){
-                        //     dd($node);
-                        // }
+                        if (
+                            $node instanceof MethodCall &&
+                            $node->var instanceof Variable &&
+                            $node->var->name === 'request' &&
+                            $node->name->toString() === 'validate'
+                        ) {
+                            // Extract the first argument (validation rules array)
+                            if (isset($node->args[0])) {
+                                $rulesNode = $node->args[0]->value;
+
+                                // Convert the AST node of the array to PHP code
+                                if ($rulesNode instanceof Node\Expr\Array_) {
+                                    $this->rules[] = $this->convertArrayNodeToPHP($rulesNode);
+                                }
+                            }
+                        }
                     }
 
                     private function convertArrayNodeToPHP(Node\Expr\Array_ $arrayNode)
@@ -77,7 +87,7 @@ class ExtractCommand extends Command
                         foreach ($arrayNode->items as $item) {
                             if ($item->key && $item->value) {
                                 $key = $item->key instanceof Node\Scalar\String_ ? $item->key->value : null;
-                                $value = $item->value instanceof Node\Scalar\String_ ? $item->value->value : collect($item->value->items)->pluck('value.value')->values()->toArray();
+                                $value = $item->value instanceof Node\Scalar\String_ ? $item->value->value : collect(data_get($item->value, 'items'))->pluck('value.value')->values()->toArray();
 
                                 if ($key) {
                                     $rules[$key] = $value;

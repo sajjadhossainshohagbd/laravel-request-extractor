@@ -4,13 +4,13 @@ namespace Sajjadhossainshohagbd\Extractor;
 
 return [
 
-    /* 
+    /*
         Path to scan for controllers. Only files in this directory will be scanned.
         If you want to scan all controllers, you can set this to 'app/Http/Controllers'.
     */
     'scan_path' => base_path('app/Http/Controllers/Test'),
 
-    /* 
+    /*
         Exclude certain controllers from being scanned. This is useful if you want to exclude certain controllers from being scanned.
         If you want to exclude all controllers, you can set this to [].
     */

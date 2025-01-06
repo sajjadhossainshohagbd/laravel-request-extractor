@@ -3,13 +3,10 @@
 namespace Sajjadhossainshohagbd\Extractor\Console;
 
 use Illuminate\Console\Command;
-use Illuminate\Http\Request;
 use PhpParser\Error;
 use PhpParser\Node;
-use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\Variable;
-use PhpParser\Parser;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
@@ -18,6 +15,7 @@ use Symfony\Component\Finder\Finder;
 class ExtractCommand extends Command
 {
     protected $signature = 'extractor:run';
+
     protected $description = 'Extract validation rules from controllers and store them in a request file';
 
     public function handle()
@@ -25,9 +23,9 @@ class ExtractCommand extends Command
         // Get scan path
         $scanPath = config('extractor.scan_path');
 
-        $finder = new Finder();
+        $finder = new Finder;
         $finder->files()->in($scanPath)->name('*.php');
-        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $parser = (new ParserFactory)->createForNewestSupportedVersion();
 
         $rulesCollection = [];
 
@@ -38,8 +36,9 @@ class ExtractCommand extends Command
                 $code = file_get_contents($filePath);
                 $ast = $parser->parse($code);
 
-                $traverser = new NodeTraverser();
-                $visitor = new class extends NodeVisitorAbstract {
+                $traverser = new NodeTraverser;
+                $visitor = new class extends NodeVisitorAbstract
+                {
                     public $rules = [];
 
                     public function enterNode(Node $node)
@@ -84,31 +83,99 @@ class ExtractCommand extends Command
                     private function convertArrayNodeToPHP(Node\Expr\Array_ $arrayNode)
                     {
                         $rules = [];
+
                         foreach ($arrayNode->items as $item) {
                             if ($item->key && $item->value) {
+                                // Extract the key
                                 $key = $item->key instanceof Node\Scalar\String_ ? $item->key->value : null;
-                                $value = $item->value instanceof Node\Scalar\String_ ? $item->value->value : collect(data_get($item->value, 'items'))->pluck('value.value')->values()->toArray();
 
+                                // Initialize value
+                                $value = null;
+
+                                // Handle different types of values
+                                if ($item->value instanceof Node\Scalar\String_) {
+                                    // Scalar string values (e.g., 'required')
+                                    $value = $item->value->value;
+                                } elseif ($item->value instanceof Node\Expr\Array_) {
+                                    // Array values (e.g., ['required', 'numeric'])
+                                    $value = collect($item->value->items)
+                                        ->map(function ($arrayItem) {
+                                            if ($arrayItem->value instanceof Node\Scalar\String_) {
+                                                // String elements inside the array
+                                                return $arrayItem->value->value;
+                                            } elseif ($arrayItem->value instanceof Node\Expr\New_) {
+                                                // Custom rules (e.g., `new UpperCase`)
+                                                return 'new ' . $arrayItem->value->class->toString();
+                                            } elseif ($arrayItem->value instanceof Node\Expr\StaticCall) {
+                                                // dd(collect($arrayItem->value->args)
+                                                //     ->map(fn($arg) => $this->getArgValue($arg->value->name))
+                                                //     ->implode(', '));
+                                                // Static calls (e.g., `Rule::requiredIf`)
+                                                $class = $arrayItem->value->class->toString();
+                                                $method = $arrayItem->value->name->toString();
+                                                $args = collect($arrayItem->value->args)
+                                                    ->map(fn($arg) => $this->getArgValue($arg->value))
+                                                    ->implode(', ');
+
+                                                return "{$class}::{$method}({$args})";
+                                            }
+                                        })
+                                        ->filter()
+                                        ->toArray();
+                                } elseif ($item->value instanceof Node\Expr\New_) {
+                                    // Custom rules (e.g., `new UpperCase`)
+                                    $value = 'new ' . $item->value->class->toString();
+                                } elseif ($item->value instanceof Node\Expr\StaticCall) {
+                                    // Static calls (e.g., `Rule::requiredIf`)
+                                    $class = $item->value->class->toString();
+                                    $method = $item->value->name->toString();
+                                    $args = collect($item->value->args)
+                                        ->map(fn($arg) => $this->getArgValue($arg->value))
+                                        ->implode(', ');
+                                    $value = "{$class}::{$method}({$args})";
+                                }
+
+                                // Add the rule to the result
                                 if ($key) {
                                     $rules[$key] = $value;
                                 }
                             }
                         }
+
                         return $rules;
+                    }
+
+                    /**
+                     * Helper method to extract argument values for static calls or other expressions.
+                     */
+                    private function getArgValue($node)
+                    {
+                        if ($node instanceof Node\Scalar\String_) {
+                            return "'" . $node->value . "'";
+                        } elseif ($node instanceof Node\Scalar\LNumber) {
+                            return $node->value;
+                        } elseif ($node instanceof Node\Expr\Variable) {
+                            return '$' . $node->name;
+                        } elseif ($node instanceof Node\Scalar\DNumber) {
+                            return $node->value;
+                        } elseif ($node instanceof Node\Expr\StaticCall) {
+                            return $node->name;
+                        }
+
+                        return $node->name;
                     }
                 };
 
                 $traverser->addVisitor($visitor);
                 $traverser->traverse($ast);
 
-                if (!empty($visitor->rules)) {
+                if (! empty($visitor->rules)) {
                     $rulesCollection[$filePath] = $visitor->rules;
                 }
 
                 dd($rulesCollection);
             } catch (Error $e) {
                 throw $e;
-
                 $this->error("Error parsing file $filePath: " . $e->getMessage());
             }
         }

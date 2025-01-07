@@ -5,6 +5,9 @@
 
 `Laravel Extract Validation` is a Laravel package that simplifies the process of extracting validation rules from controller methods and automatically generating request files. This helps you keep your controllers clean and maintainable by moving validation logic to dedicated **FormRequest** classes.
 
+> Note: This package is still under active development and is not ready for production use.
+
+
 ## Installation
 
 To install the package, you can use Composer:
